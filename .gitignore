@@ -1,0 +1,23 @@
+# LabVIEW per-user / per-machine files
+*.aliases
+*.lvlps
+.*.UserState/
+
+# LabVIEW compiled object cache and build output
+*.lvobj
+builds/
+
+# Acquisition and test output
+*.tdms
+*.tdms_index
+Data/
+
+# Reports generated at runtime
+Reporting/output/
+
+# OS / editor clutter
+Thumbs.db
+desktop.ini
+.DS_Store
+~$*
+.vscode/

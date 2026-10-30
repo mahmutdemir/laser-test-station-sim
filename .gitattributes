@@ -1,0 +1,27 @@
+# Default: normalize text files
+* text=auto
+
+# LabVIEW source files are binary; never convert line endings or diff/merge as text
+*.vi      binary
+*.vim     binary
+*.vit     binary
+*.ctl     binary
+*.ctt     binary
+*.llb     binary
+*.lvlib   binary
+*.lvclass binary
+*.lvsc    binary
+*.xctl    binary
+*.rtm     binary
+*.mnu     binary
+
+# Project file is XML, but LabVIEW writes CRLF; keep it byte-for-byte
+*.lvproj  -text
+
+# Data files
+*.tdms    binary
+*.tdms_index binary
+*.png     binary
+*.jpg     binary
+*.docx    binary
+*.xlsx    binary
