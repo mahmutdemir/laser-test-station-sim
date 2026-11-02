@@ -16,7 +16,7 @@ measure the L-I curve, evaluate pass/fail, then log and report.
 
 | Folder | Contents |
 |---|---|
-| `Typedefs/` | Type definitions shared across VIs (station state enum, test config, measurement clusters) |
+| `Typedefs/` | Type definitions shared across VIs (station state and chiller action enums, test config and measurement clusters) |
 | `Instruments/` | Simulated instrument drivers: chiller (functional global), laser model, power meter |
 | `DAQ/` | NI-DAQmx acquisition VIs (finite and continuous, TDMS logging) |
 | `Sequencer/` | Test sequence state machine |
@@ -24,7 +24,29 @@ measure the L-I curve, evaluate pass/fail, then log and report.
 | `Reporting/` | Report generation |
 | `Data/` | Runtime output (TDMS/CSV). Ignored by git |
 
-Open `LaserTestStation.lvproj` to get started.
+Open `LaserTestStation.lvproj` to get started. All source folders are auto-populating in the project.
+
+## VIs
+
+| VI | Purpose |
+|---|---|
+| `Instruments/Chiller.vi` | Simulated chiller as a functional global (non-reentrant, state in uninitialized shift registers). Actions: Init, Set Setpoint, Step, Read |
+| `Instruments/Laser.vi` | Stateless diode-laser model: power and threshold current from drive current and temperature |
+| `Instruments/Power Meter.vi` | Power reading with calibration gain/offset error and noise |
+| `DAQ/DAQ Thermistor.vi` | Finite DAQmx acquisition on `Dev1/ai0`, averaged and scaled to temperature |
+| `Tests/Test Chiller.vi` | Steps the chiller toward a 25 °C setpoint and charts the settling curve |
+| `Tests/Test Li.vi` | Sweeps 0–6 A through Laser + Power Meter and plots L-I curves at 25 °C and 35 °C |
+| `Tests/Continuous AI.vi` | Continuous DAQmx acquisition with TDMS logging and per-block CSV means |
+| `Tests/Triggered AI.vi` | DAQmx acquisition with a digital-edge start trigger |
+| `Tests/View TDMS.vi` | Opens a logged TDMS file for viewing |
+| `Tests/Test All Instruments.vi` | End-to-end run: chiller settle, thermistor read, L-I sweep at the chiller temperature, one error chain |
+| `Tests/Scratch*.vi` | Dataflow and loop drills |
+
+## Running
+
+1. Create the simulated `Dev1` device (see Requirements).
+2. Run `Tests/Test All Instruments.vi` for the full instrument chain, or any single test VI.
+3. `Continuous AI.vi` logs to `C:\temp\ai_log.tdms`. Create `C:\temp` first.
 
 ## Simulation models
 
@@ -43,8 +65,8 @@ Open `LaserTestStation.lvproj` to get started.
 ## Status
 
 - [x] Project structure and type definitions
-- [ ] Simulated instruments (chiller, laser, power meter)
-- [ ] DAQmx acquisition and TDMS logging
+- [x] Simulated instruments (chiller, laser, power meter)
+- [x] DAQmx acquisition, triggering, and TDMS/CSV logging
 - [ ] Sequencer state machine
 - [ ] Reporting
 
