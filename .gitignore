@@ -11,6 +11,7 @@ builds/
 *.tdms
 *.tdms_index
 Data/
+logs/
 
 # Reports generated at runtime
 Reporting/output/
