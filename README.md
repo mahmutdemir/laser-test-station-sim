@@ -21,7 +21,19 @@ stabilizes temperature, sweeps drive current, fits the L-I curve, and makes a pa
 ```
 Idle (event structure) → Initialize → Chiller Stabilize → Current Ramp ⇄ Measure
                                                               ↓
-              Idle ← Safe Shutdown ← Report ← Log ← Evaluate
+                                     Idle ← Safe Shutdown ← Evaluate
+```
+
+### Safety gate
+
+An error, Abort, an open interlock, or over-temperature forces Safe Shutdown. Safe Shutdown sets the laser to 0 A and logs the reason.
+
+### Logging
+
+The state machine (producer) sends log messages through a queue to the logging loop (consumer), which writes one CSV per run to `logs/<serial>_<timestamp>.csv`. Data columns are `current_a,power_w,temp_c,t_s`. Each file ends with a footer line:
+
+```
+# pass=<0|1> ith=<A> slope=<W/A> reason=<text>
 ```
 
 ## Repository contents
@@ -57,6 +69,20 @@ Idle (event structure) → Initialize → Chiller Stabilize → Current Ramp ⇄
 
 **Latest result with default settings:** PASS, I<sub>th</sub> = 0.425 A, slope = 0.908 W/A, peak about 2.78 W near 4.6 A.
 
+## Fault-injection tests
+
+Each case was run through `Main.vi` and checked against the CSV footer.
+
+| Test | Result | Footer |
+|---|---|---|
+| Normal run | PASS | `pass=1`, I<sub>th</sub> ≈ 0.42 A, slope ≈ 0.91 W/A, empty reason |
+| Interlock open | Safe Shutdown | `pass=0 reason=Interlock open` |
+| Operator abort | Safe Shutdown | `pass=0 reason=Operator abort` |
+| Stabilize timeout | Safe Shutdown, error 5001 | `pass=0 reason=Error 5001: Main.vi` |
+| Bad DAQ channel | Safe Shutdown, error −200220 | `pass=0 reason=Error -200220: DAQmx Create Channel…` |
+| Spec fail (`Ith Max` = 0.3) | FAIL | `pass=0`, I<sub>th</sub> ≈ 0.42 A, slope ≈ 0.91 W/A, empty reason |
+| Over-temperature | Safe Shutdown | `pass=0 reason=Over-temperature` |
+
 ## Simulation models
 
 **Chiller:** first-order response toward the setpoint, τ = 30 s, ±0.05 °C noise.
@@ -77,12 +103,12 @@ Done:
 
 - [x] Type definitions, simulated instruments, DAQmx acquisition
 - [x] State machine, event-driven UI, test states, L-I fit
+- [x] Safe-shutdown gate: Abort, Interlock, over-temperature and errors always go to Safe Shutdown
+- [x] CSV logging in the consumer loop
+- [x] Fault-injection tests
 
 Roadmap:
 
-- [ ] Safe-shutdown gate: Abort, Interlock, over-temperature and errors always go to Safe Shutdown
-- [ ] CSV logging in the consumer loop
-- [ ] Fault-injection tests
 - [ ] SQLite results database
 - [ ] HTML reports
 - [ ] Yield query
