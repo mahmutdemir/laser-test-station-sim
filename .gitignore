@@ -10,9 +10,9 @@ builds/
 # Acquisition and test output
 *.tdms
 *.tdms_index
-Data/
 logs/
 logs/*.csv
+db/
 
 # Reports generated at runtime
 Reporting/output/
