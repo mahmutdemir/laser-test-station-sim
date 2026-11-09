@@ -9,8 +9,19 @@ stabilizes temperature, sweeps drive current, fits the L-I curve, and makes a pa
 
 1. Install NI-DAQmx and create a simulated **PCIe-6361** named `Dev1` in NI MAX:
    *Devices and Interfaces → Create New… → Simulated NI-DAQmx Device or Modular Instrument → PCIe-6361*
-2. Open `LaserTestStation.lvproj` in LabVIEW 2026 Q3. The project uses separate compiled code, so only source is stored in git.
-3. Run `Main.vi` and press **Start**.
+2. Install the **SQLite Library** package (VI Package Manager) and the LabVIEW **Database Connectivity Toolkit**.
+3. Open `LaserTestStation.lvproj` in LabVIEW 2026 Q3. The project uses separate compiled code, so only source is stored in git.
+4. Run `Main.vi` and press **Start**. Each run is written to the local SQLite database `db/lts.db`, which is created on first use.
+
+To forward results to SQL Server (optional):
+
+1. Install SQL Server Express (instance `.\SQLEXPRESS`) and the Microsoft OLE DB Driver for SQL Server (`MSOLEDBSQL`).
+2. Create the central database and the sync procedure:
+   ```
+   sqlcmd -S lpc:.\SQLEXPRESS -E -i sql\schema_mssql.sql
+   sqlcmd -S lpc:.\SQLEXPRESS -E -I -i sql\sync_run_mssql.sql
+   ```
+3. Run `Data/Sync To Server.vi`.
 
 `Tests/Continuous AI.vi` logs to `C:\temp\ai_log.tdms`, so create `C:\temp` before running it.
 
@@ -36,6 +47,26 @@ The state machine (producer) sends log messages through a queue to the logging l
 # pass=<0|1> ith=<A> slope=<W/A> reason=<text>
 ```
 
+### Results database
+
+Each run is also recorded in a local SQLite database (`db/lts.db`, schema in `sql/schema.sql`):
+one `test_runs` row with the fit results and pass/fail or abort reason, plus one `measurements` row per sweep point.
+The station keeps working when the central server is unavailable.
+
+### Store-and-forward sync
+
+`Data/Sync To Server.vi` forwards finished, unsynced runs (`ended_at` set, `synced_at` empty) to SQL Server.
+For each run it calls the `dbo.sync_run` stored procedure (`sql/sync_run_mssql.sql`) with the run fields and the
+measurements as a JSON array, then stamps the local row's `synced_at` with the UTC time in ISO 8601.
+
+- **Idempotent:** the server keys runs on (station, local run ID). Calling `sync_run` again for a run that's already
+  on the server returns the existing run and inserts nothing, so a retry never creates duplicates.
+- **Atomic:** each run and its measurements are inserted in one transaction (`XACT_ABORT ON`).
+- **Verified:** the first sync forwarded 3 runs and a second sync forwarded 0. The server holds one row per local run,
+  with every measurement copied.
+
+`sql/schema_mssql.sql` also defines `dbo.v_daily_yield`, a view of pass/fail/abort counts and yield per station per day.
+
 ## Repository contents
 
 | Path | Purpose |
@@ -57,7 +88,13 @@ The state machine (producer) sends log messages through a queue to the logging l
 | `Tests/Continuous AI.vi` | Continuous analog input with TDMS logging and CSV block means |
 | `Tests/Triggered AI.vi` | Analog input with a digital-edge start trigger |
 | `Tests/View TDMS.vi` | Viewer for logged TDMS files |
+| `Tests/Test SQL Server.vi` | Connection check against the central SQL Server database |
 | `Tests/Scratch*.vi` | Dataflow and loop drills |
+| `Data/DB Init.vi` | Opens or creates the local SQLite database |
+| `Data/Sync To Server.vi` | Store-and-forward sync of finished runs to SQL Server |
+| `sql/schema.sql` | Local SQLite schema |
+| `sql/schema_mssql.sql` | Central SQL Server schema and daily yield view |
+| `sql/sync_run_mssql.sql` | `dbo.sync_run` stored procedure |
 
 ## Test method
 
@@ -106,10 +143,11 @@ Done:
 - [x] Safe-shutdown gate: Abort, Interlock, over-temperature and errors always go to Safe Shutdown
 - [x] CSV logging in the consumer loop
 - [x] Fault-injection tests
+- [x] SQLite results database
+- [x] SQL Server store-and-forward sync
 
 Roadmap:
 
-- [ ] SQLite results database
 - [ ] HTML reports
 - [ ] Yield query
 

@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS test_runs (
   ith_a          REAL,
   slope_w_per_a  REAL,
   pass           INTEGER,          -- 1 pass, 0 fail, NULL aborted
-  abort_reason   TEXT
+  abort_reason   TEXT,
+  synced_at	     TEXT              -- UTC time the run reached SQL Server; NULL = not yet
 );
 CREATE INDEX IF NOT EXISTS ix_runs_station_time ON test_runs(station_id, started_at);
 CREATE INDEX IF NOT EXISTS ix_runs_unit ON test_runs(unit_id);
