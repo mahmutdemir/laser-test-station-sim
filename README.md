@@ -21,7 +21,8 @@ To forward results to SQL Server (optional):
    sqlcmd -S lpc:.\SQLEXPRESS -E -i sql\schema_mssql.sql
    sqlcmd -S lpc:.\SQLEXPRESS -E -I -i sql\sync_run_mssql.sql
    ```
-3. Run `Data/Sync To Server.vi`.
+3. `Main.vi` syncs finished runs at shutdown. To sync manually, run `Data/Sync To Server.vi`.
+4. Run `Tests/Daily Yield.vi` to see yield per station per day.
 
 `Tests/Continuous AI.vi` logs to `C:\temp\ai_log.tdms`, so create `C:\temp` before running it.
 
@@ -56,6 +57,7 @@ The station keeps working when the central server is unavailable.
 ### Store-and-forward sync
 
 `Data/Sync To Server.vi` forwards finished, unsynced runs (`ended_at` set, `synced_at` empty) to SQL Server.
+`Main.vi` calls it at shutdown, and it can also be run on its own.
 For each run it calls the `dbo.sync_run` stored procedure (`sql/sync_run_mssql.sql`) with the run fields and the
 measurements as a JSON array, then stamps the local row's `synced_at` with the UTC time in ISO 8601.
 
@@ -65,7 +67,11 @@ measurements as a JSON array, then stamps the local row's `synced_at` with the U
 - **Verified:** the first sync forwarded 3 runs and a second sync forwarded 0. The server holds one row per local run,
   with every measurement copied.
 
-`sql/schema_mssql.sql` also defines `dbo.v_daily_yield`, a view of pass/fail/abort counts and yield per station per day.
+### Daily yield report
+
+`sql/schema_mssql.sql` defines `dbo.v_daily_yield`, a view of run, pass and abort counts and yield per station per day.
+Yield is passed runs divided by completed runs, so aborted runs don't count against it.
+`Tests/Daily Yield.vi` queries the view and shows station, date, runs, passed, aborted and yield %.
 
 ## Repository contents
 
@@ -89,6 +95,7 @@ measurements as a JSON array, then stamps the local row's `synced_at` with the U
 | `Tests/Triggered AI.vi` | Analog input with a digital-edge start trigger |
 | `Tests/View TDMS.vi` | Viewer for logged TDMS files |
 | `Tests/Test SQL Server.vi` | Connection check against the central SQL Server database |
+| `Tests/Daily Yield.vi` | Daily yield per station from SQL Server |
 | `Tests/Scratch*.vi` | Dataflow and loop drills |
 | `Data/DB Init.vi` | Opens or creates the local SQLite database |
 | `Data/Sync To Server.vi` | Store-and-forward sync of finished runs to SQL Server |
@@ -144,12 +151,12 @@ Done:
 - [x] CSV logging in the consumer loop
 - [x] Fault-injection tests
 - [x] SQLite results database
-- [x] SQL Server store-and-forward sync
+- [x] SQL Server store-and-forward sync, with sync at shutdown
+- [x] Daily yield report
 
 Roadmap:
 
 - [ ] HTML reports
-- [ ] Yield query
 
 ---
 
